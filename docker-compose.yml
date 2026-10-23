@@ -12,10 +12,10 @@ services:
       - "./data/traefik/dynamic:/opt/traefik/dynamic"
     restart: unless-stopped
   nginx-relay:
-    build: ./nginx-relay/
+    image: nginx:stable-alpine
     restart: unless-stopped
     volumes:
-      - ./data/nginx-relay:/etc/nginx/conf.d
+      - ./data/nginx-relay:/usr/conf.d
     # This config assumes that the traefik container has access to the bridge network
     network_mode: bridge
     ports: 
@@ -25,5 +25,7 @@ services:
       - traefik.tcp.routers.signal-proxy.rule=HostSNI("signal.mydomain.com") 
       - traefik.tcp.routers.signal-proxy.tls=true
       - traefik.tcp.routers.signal-proxy.tls.certresolver=leresolver
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; /opt/nginx/sbin/nginx -s reload; done & /opt/nginx/sbin/nginx -c /etc/nginx/conf.d/nginx.conf -g \"daemon off;\"'"
+      # The nginx image only exposes port 80, so Traefik can't detect the relay port on its own
+      - traefik.tcp.services.signal-proxy.loadbalancer.server.port=4433
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; /usr/sbin/nginx -s reload; done & /usr/sbin/nginx -c /usr/conf.d/nginx.conf -g \"daemon off;\"'"
 
